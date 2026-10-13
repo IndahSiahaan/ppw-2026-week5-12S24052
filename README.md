@@ -1,58 +1,102 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 📚 SIPUS-Del (Tahap 2) - Sistem Informasi Perpustakaan Kampus Del
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Tugas Praktikum Minggu 06 — Pemrograman & Pengujian Web (12S3101)**  
+Program Studi Sarjana Sistem Informasi • Fakultas Informatika dan Teknik Elektro  
+**Institut Teknologi Del**
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 👤 Identitas Mahasiswa
+* **Nama:** Indah Triyuni Siahaan
+* **NIM:** 12S24052
+* **Program Studi:** S1 Sistem Informasi
+* **Kelas:** 12SI2
+* **Tahun Akademik:** 2026/2027 (Semester Ganjil)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🔐 Kredensial Akun Uji Pustakawan
+Untuk login dan menguji hak akses pustakawan (tambah buku, proses peminjaman & pengembalian buku):
+* **URL Login:** `http://127.0.0.1:8000/login`
+* **Email:** `pustakawan@del.ac.id`
+* **Password:** `password123`
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🚀 Fitur & Implementasi Praktikum Minggu 6
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1. Skema Tabel `peminjamans` & Relasi Eloquent (Bobot: 20%)
+* Tabel `peminjamans` memiliki kolom: `id`, `kode_pinjam` (unik), `buku_id` (foreign key `cascadeOnDelete`), `nim_peminjam`, `nama_peminjam`, `tanggal_pinjam`, `tanggal_jatuh_tempo`, `tanggal_kembali` (nullable), `status` (enum: dipinjam, dikembalikan), dan `timestamps`.
+* **Relasi Eloquent:**
+  * `Buku` hasMany `Peminjaman` (`$buku->peminjamans`)
+  * `Peminjaman` belongsTo `Buku` (`$peminjaman->buku`)
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### 2. Transaksi Basis Data ACID & Concurrency Locking (Bobot: 25%)
+* **Peminjaman Buku:**
+  * Dibungkus dengan `DB::transaction(function() { ... }, 3)`
+  * Menggunakan **Pessimistic Locking** `Buku::where('id', $id)->lockForUpdate()->firstOrFail()` untuk mencegah *Race Condition* kuota/stok.
+  * Memeriksa `stok > 0` (otomatis melempar pengecualian / rollback jika stok habis).
+  * Validasi NIM agar mahasiswa tidak meminjam buku yang sama sebelum mengembalikannya.
+  * Mutasi stok atomik: `$buku->decrement('stok')`.
+* **Pengembalian Buku:**
+  * Dibungkus dengan `DB::transaction()`.
+  * Status diubah menjadi `'dikembalikan'` dan mencatat `tanggal_kembali`.
+  * Mengembalikan stok buku secara atomik: `$buku->increment('stok')`.
+  * Menangkap `QueryException` dan mencatatnya ke `Log::error()`.
 
-## Agentic Development
+### 3. Fluent Query Builder (`DB::table`) & Agregasi Dashboard (Bobot: 15%)
+* Menghitung metrik analitik secara efisien:
+  * Total Judul Buku: `DB::table('bukus')->count()`
+  * Total Stok Tersedia: `DB::table('bukus')->sum('stok')`
+  * Total Buku Sedang Dipinjam: `DB::table('peminjamans')->where('status', 'dipinjam')->count()`
+  * Total Buku Dikembalikan: `DB::table('peminjamans')->where('status', 'dikembalikan')->count()`
+* Optimasi Eager Loading & Bebas N+1: `Buku::with('kategori')->withCount('peminjamans')`.
+* Pencarian dinamis menggunakan filter conditional `when()`.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 4. Manajemen Sesi Pengguna, Cookie & Autentikasi (Bobot: 25%)
+* **Proteksi Session Fixation:** Memanggil `$request->session()->regenerate()` saat login berhasil.
+* **Logout Aman:** Memanggil `Auth::logout()`, `$request->session()->invalidate()`, dan `$request->session()->regenerateToken()`.
+* **HTTP Cookie:** Menyimpan email terakhir menggunakan `Cookie::queue('sipus_last_email', ..., 10080)`.
+* **Proteksi Rute:** Menggunakan `Route::middleware('auth')` untuk semua aksi mutasi data (tambah buku, pinjam, dan kembalikan).
 
-```bash
-composer require laravel/boost --dev
+---
 
-php artisan boost:install
-```
+## 🛠️ Panduan Instalasi & Menjalankan Aplikasi
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+1. **Clone Repositori:**
+   ```bash
+   git clone <url-repository>
+   cd ppw-2026-week5-12S24052
+   git checkout week6-db-session
+   ```
 
-## Contributing
+2. **Konfigurasi Environment `.env`:**
+   Pastikan konfigurasi database mengarah ke MySQL Laragon:
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=ppw-week6
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3. **Migrasi dan Seeding Data:**
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
 
-## Code of Conduct
+4. **Jalankan Development Server:**
+   ```bash
+   php artisan serve
+   ```
+   Buka di peramban: `http://127.0.0.1:8000`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 📸 Bukti Pengujian Praktikum (Audit DevTools & Transaksi)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+*(Sertakan tangkapan layar pengujian berikut saat pelaporan tugas)*:
+1. **Bukti Transaksi Peminjaman & Pengembalian Buku Berhasil**
+2. **Bukti Penolakan Transaksi Saat Stok = 0 (Rollback Transaksi)**
+3. **Inspeksi Cookie `HttpOnly` dan Sesi pada Browser DevTools (Tab Application -> Cookies)**
