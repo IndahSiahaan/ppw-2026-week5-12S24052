@@ -1,0 +1,115 @@
+{
+  "info": {
+    "name": "SIPUS-Del API v1 - Week 9",
+    "description": "Koleksi Postman / Thunder Client untuk Pengujian SOAP dan RESTful API v1 SIPUS-Del (NIM: 12S24052)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. SOAP Clearance Status",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "text/xml; charset=utf-8" }],
+        "body": {
+          "mode": "raw",
+          "raw": "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">\n  <soap:Body>\n    <CheckClearanceStatusRequest>\n      <nim_peminjam>12S24052</nim_peminjam>\n    </CheckClearanceStatusRequest>\n  </soap:Body>\n</soap:Envelope>"
+        },
+        "url": { "raw": "{{base_url}}/soap/sipus" }
+      }
+    },
+    {
+      "name": "2. Auth Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"pustakawan@del.ac.id\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/auth/login" }
+      }
+    },
+    {
+      "name": "3. Get Katalog Buku",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/buku" }
+      }
+    },
+    {
+      "name": "4. Post Tambah Buku",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"judul\": \"Pemrograman Web Laravel\",\n  \"penulis\": \"Indah Triyuni Siahaan\",\n  \"penerbit\": \"Informatika Del Press\",\n  \"isbn\": \"9780123456\",\n  \"tahun_terbit\": 2024,\n  \"kategori_id\": 1,\n  \"stok\": 5,\n  \"sinopsis\": \"Buku referensi praktikum web service REST dan SOAP.\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/buku" }
+      }
+    },
+    {
+      "name": "5. Patch Update Buku",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stok\": 10\n}"
+        },
+        "url": { "raw": "{{base_url}}/buku/21" }
+      }
+    },
+    {
+      "name": "6. Post Pinjam Buku (ACID)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nim_peminjam\": \"12S24052\",\n  \"buku_id\": 21,\n  \"tanggal_pinjam\": \"2026-11-10\",\n  \"durasi_hari\": 7\n}"
+        },
+        "url": { "raw": "{{base_url}}/peminjamans" }
+      }
+    },
+    {
+      "name": "7. Patch Kembalikan Buku",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/peminjamans/5/kembalikan" }
+      }
+    },
+    {
+      "name": "8. Get Referensi Eksternal OpenLibrary",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/buku/21/referensi-eksternal" }
+      }
+    }
+  ]
+}

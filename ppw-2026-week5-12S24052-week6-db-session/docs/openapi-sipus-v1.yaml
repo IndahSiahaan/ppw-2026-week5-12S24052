@@ -1,0 +1,276 @@
+openapi: "3.0.3"
+info:
+  title: SIPUS-Del Library API
+  version: "1.0.0"
+  description: |
+    REST + SOAP Web Service untuk Sistem Informasi Perpustakaan Del (SIPUS-Del).
+    Praktikum PPW Week 9 — NIM: 12S24052 — Indah Triyuni Siahaan
+  contact:
+    name: Indah Triyuni Siahaan
+    email: indah.siahaan@students.del.ac.id
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Buku:
+      type: object
+      properties:
+        id:          { type: integer }
+        judul:       { type: string }
+        pengarang:   { type: string }
+        isbn:        { type: string }
+        tahun_terbit:{ type: integer }
+        stok:        { type: integer }
+        kategori:
+          type: object
+          properties:
+            id:            { type: integer }
+            nama_kategori: { type: string }
+        _links:
+          type: object
+          properties:
+            self:       { type: object, properties: { href: { type: string } } }
+            collection: { type: object, properties: { href: { type: string } } }
+            pinjam:     { type: object, properties: { href: { type: string } } }
+
+    Peminjaman:
+      type: object
+      properties:
+        id:               { type: integer }
+        nim_peminjam:     { type: string }
+        id_buku:          { type: integer }
+        tanggal_pinjam:   { type: string, format: date }
+        tanggal_kembali:  { type: string, format: date }
+        status:           { type: string, enum: [dipinjam, dikembalikan] }
+        _links:
+          type: object
+          properties:
+            self:       { type: object, properties: { href: { type: string } } }
+            kembalikan: { type: object, properties: { href: { type: string } } }
+            buku:       { type: object, properties: { href: { type: string } } }
+
+    Problem:
+      type: object
+      properties:
+        type:     { type: string }
+        title:    { type: string }
+        status:   { type: integer }
+        detail:   { type: string }
+        instance: { type: string }
+
+paths:
+  /auth/login:
+    post:
+      summary: Login dan dapatkan Bearer token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email, example: pustakawan@del.ac.id }
+                password: { type: string, example: password123 }
+      responses:
+        "200":
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      token:      { type: string }
+                      token_type: { type: string }
+        "422":
+          description: Validasi gagal
+
+  /auth/logout:
+    post:
+      summary: Logout (hapus token)
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logout berhasil
+
+  /buku:
+    get:
+      summary: Daftar semua buku (paginated)
+      tags: [Buku]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Buku' }
+
+    post:
+      summary: Tambah buku baru
+      tags: [Buku]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [judul, pengarang, isbn, tahun_terbit, id_kategori, stok]
+              properties:
+                judul:        { type: string }
+                pengarang:    { type: string }
+                isbn:         { type: string }
+                tahun_terbit: { type: integer }
+                id_kategori:  { type: integer }
+                stok:         { type: integer }
+      responses:
+        "201":
+          description: Buku berhasil ditambahkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Buku' }
+        "409":
+          description: ISBN sudah ada
+
+  /buku/{id}:
+    get:
+      summary: Detail buku
+      tags: [Buku]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Buku' }
+        "404":
+          description: Buku tidak ditemukan
+
+    patch:
+      summary: Update sebagian data buku
+      tags: [Buku]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                judul:        { type: string }
+                pengarang:    { type: string }
+                stok:         { type: integer }
+      responses:
+        "200":
+          description: Berhasil diperbarui
+
+    delete:
+      summary: Hapus buku
+      tags: [Buku]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Berhasil dihapus
+        "409":
+          description: Tidak bisa hapus karena ada peminjaman aktif
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /peminjaman:
+    get:
+      summary: Daftar semua peminjaman
+      tags: [Peminjaman]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+
+    post:
+      summary: Buat peminjaman baru
+      tags: [Peminjaman]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nim_peminjam, id_buku, tanggal_pinjam, tanggal_kembali]
+              properties:
+                nim_peminjam:    { type: string }
+                id_buku:         { type: integer }
+                tanggal_pinjam:  { type: string, format: date }
+                tanggal_kembali: { type: string, format: date }
+      responses:
+        "201":
+          description: Peminjaman berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Peminjaman' }
+        "409":
+          description: Sudah meminjam buku ini
+
+  /peminjaman/{id}/kembalikan:
+    patch:
+      summary: Kembalikan buku
+      tags: [Peminjaman]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Berhasil dikembalikan
+        "409":
+          description: Sudah dikembalikan sebelumnya
