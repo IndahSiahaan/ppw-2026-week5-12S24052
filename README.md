@@ -1,19 +1,6 @@
 # SIPUS-Del — Sistem Informasi Perpustakaan Kampus Del
 ## Tugas Praktikum Minggu 09: Web Services & REST API (SOAP + RESTful API v1)
 
-**Mata Kuliah:** Pemrograman dan Pengujian Aplikasi Web (12S3101)  
-**Program Studi:** S1 Sistem Informasi / Informatika — Institut Teknologi Del  
-**Dosen Pengampu:** Chandro Pardede, S.Kom., M.Sc.  
-
----
-
-### 👤 Identitas Mahasiswa
-- **Nama:** Indah Triyuni Siahaan  
-- **NIM:** 12S24052  
-- **Kelas:** 12S3101 - PPW  
-- **Branch Penugasan:** `week9-rest-api`  
-- **Repositori:** [https://github.com/IndahSiahaan/ppw-2026-week5-12S24052/tree/week9-rest-api](https://github.com/IndahSiahaan/ppw-2026-week5-12S24052/tree/week9-rest-api)
-
 ---
 
 ## 1. Analisis Kebutuhan & Kelayakan (Feasibility) Web Services
